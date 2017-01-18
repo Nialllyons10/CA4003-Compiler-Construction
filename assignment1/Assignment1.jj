@@ -1,0 +1,303 @@
+/*******************************
+***** SECTION 1 - OPTIONS *****
+*******************************/
+options {
+    IGNORE_CASE = true;
+}
+
+/*********************************
+***** SECTION 2 - USER CODE *****
+*********************************/
+PARSER_BEGIN(Assignment1)
+import java.io.*;
+import java.util.*;
+
+public class Assignment1 {
+    public static void main(String[] args) {
+        Assignment1 tokeniser;
+        
+        // Initialise parser
+        if(args.length == 1) {   
+            try {
+                tokeniser = new Assignment1(new FileInputStream(args[0]));
+            }
+            catch(FileNotFoundException e) {
+                System.err.println("File " + args[0] + " not found");
+                return;
+            }
+        } else {
+            System.out.println("Assignment1 can be used by entering the following command:");
+            System.out.println("     java Assignment1 inputfile");
+            return;
+        }
+        
+        // put all tokens into map to be accessed when displaying program
+        HashMap allTokens = new HashMap();
+        allTokens.put(VAR, "VAR");
+        allTokens.put(CONST, "CONST");
+        allTokens.put(RETURN, "RETURN");
+        allTokens.put(INTEGER, "INTEGER");
+        allTokens.put(BOOLEAN, "BOOLEAN");
+        allTokens.put(VOID, "VOID");
+        allTokens.put(MAIN, "MAIN");
+        allTokens.put(IF, "IF");
+        allTokens.put(ELSE, "ELSE");
+        allTokens.put(WHILE, "WHILE");
+        allTokens.put(SKIP_W, "SKIP_W");
+        allTokens.put(TRUE, "TRUE");
+        allTokens.put(COMMA, "COMMA");
+        allTokens.put(SEMICOLON, "SEMICOLON");
+        allTokens.put(COLON, "COLON");
+        allTokens.put(LEFT_BRACE, "LEFT_BRACE");
+        allTokens.put(RIGHT_BRACE, "RIGHT_BRACE");
+        allTokens.put(LEFT_BRACKET, "LEFT_BRACKET");
+        allTokens.put(RIGHT_BRACKET, "RIGHT_BRACKET");
+        allTokens.put(ASSIGNMENT, "ASSIGNMENT");
+        allTokens.put(PLUS, "PLUS");
+        allTokens.put(MINUS, "MINUS");
+        allTokens.put(NOT, "NOT");
+        allTokens.put(OR, "OR");
+        allTokens.put(AND, "AND");
+        allTokens.put(EQUALS, "EQUALS");
+        allTokens.put(NOT_EQUALS, "NOT_EQUALS");
+        allTokens.put(LESS_THAN, "LESS_THAN");
+        allTokens.put(LESS_THAN_OR_EQUAL_TO, "LESS_THAN_OR_EQUAL_TO");
+        allTokens.put(GREATER_THAN, "GREATER_THAN");
+        allTokens.put(GREATER_THAN_OR_EQUAL_TO, "GREATER_THAN_OR_EQUAL_TO");
+        allTokens.put(NUMBER, "NUMBER");
+        allTokens.put(IDENTIFIER, "IDENTIFIER");
+        
+        // Display file
+        System.out.println("For the following file...");
+        for(Token t = getNextToken(); t.kind!=EOF; t = getNextToken()) {
+            System.out.print(allTokens.get(t.kind) + " ");
+            System.out.print("('" + t.image + "') ");
+        }
+        System.out.println();
+        
+        // Re-initialise parser
+        try {
+            ReInit(new FileInputStream(args[0]));
+        }
+        catch(FileNotFoundException e) {
+            System.err.println("File " + args[0] + " not found");
+            return;
+        }
+        
+        System.out.println("-------------------------------------------");
+        // Has program been parsed?
+        try {
+            tokeniser.program();
+            System.out.println("It has been parsed successfully!");
+        } catch(ParseException p) {
+            System.out.println("There was an error while parsing:");
+            System.err.println(p);
+        }
+    }
+}
+PARSER_END(Assignment1)
+
+/*****************************************
+***** SECTION 3 - TOKEN DEFINITIONS *****
+*****************************************/
+TOKEN_MGR_DECLS :
+{
+    static int commentNesting = 0;
+}
+
+/* Ignore any whitespace */
+SKIP : {
+    "\t"
+  | "\n"
+  | "\r"
+  | "\f"
+  | " "
+}
+
+/* Ingore comments */
+SKIP : {
+    < "//" ([" "-"~"])* ("\n" | "\r" | "\r\n") >
+  |   "/*" { commentNesting++; } : IN_COMMENT
+}
+
+<IN_COMMENT> SKIP : {
+    "/*" { commentNesting++; }
+  | "*/" { commentNesting--;
+          if (commentNesting == 0)
+              SwitchTo(DEFAULT);
+         }
+  /* Anything not recognised */
+  | <~[]>
+}
+    
+TOKEN : {
+/* Reserved Words */
+    < VAR: "var" >
+  | < CONST: "const" >
+  | < RETURN: "return" >
+  | < INTEGER: "integer" >
+  | < BOOLEAN: "boolean" >
+  | < VOID: "void" >
+  | < MAIN: "main" >
+  | < IF: "if" >
+  | < ELSE: "else" >
+  | < WHILE: "while" >
+  | < SKIP_W: "skip" >
+  | < TRUE: "true" >
+  | < FALSE: "false" >
+
+/* Symbols */
+  | < COMMA: ",">
+  | < SEMICOLON: ";" >
+  | < COLON: ":" >
+  | < LEFT_BRACE: "{" >
+  | < RIGHT_BRACE: "}" >
+  | < LEFT_BRACKET: "(" >
+  | < RIGHT_BRACKET: ")" >  
+
+/* Operators */
+  | < ASSIGNMENT: "=" >
+  | < PLUS: "+" >
+  | < MINUS: "-" >
+  | < NOT: "~" >
+  | < OR: "||" >
+  | < AND: "&&" >
+  | < EQUALS: "==" >
+  | < NOT_EQUALS: "!=" >
+  | < LESS_THAN: "<" >
+  | < LESS_THAN_OR_EQUAL_TO: "<=" >
+  | < GREATER_THAN: ">" >
+  | < GREATER_THAN_OR_EQUAL_TO: ">=" >
+
+/* Integer */
+  | < #DIGIT: ["0"-"9"] >
+  | < NUMBER: ( "-" ["1"-"9"] (<DIGIT>)* ) |
+              ( ["1"-"9"] (<DIGIT>)* ) |
+              "0" >
+
+/* Identifier */
+  | < #CHAR: ["a"-"z"] >
+  | < IDENTIFIER: <CHAR> ( <CHAR> | <DIGIT> | "_" )* >
+}
+
+/*********************************************
+* SECTION 4 - THE GRAMMAR & PRODUCTION RULES *
+**********************************************/
+void program ( ) : {}
+{
+    ( decl() )* ( function() )* main()
+}
+
+void decl ( ) : {}
+{
+    ( var_decl() | const_decl() ) <SEMICOLON>
+}
+
+void var_decl ( ) : {}
+{
+    <VAR> <IDENTIFIER> <COLON> type() 
+}
+
+void const_decl ( ) : {}
+{
+    <CONST> <IDENTIFIER> <COLON> type() <ASSIGNMENT> expression()
+}
+
+void function ( ) : {}
+{
+    type() <IDENTIFIER> <LEFT_BRACKET> ( parameter() )* <RIGHT_BRACKET>
+    <LEFT_BRACE>
+    ( decl() )*
+    ( statement() )*
+    <RETURN> expression() <SEMICOLON>
+    <RIGHT_BRACE>
+}
+
+void type ( ) : {}
+{
+    ( <INTEGER> | <BOOLEAN> | <VOID> )
+}
+
+void parameter ( ) : {}
+{
+    <IDENTIFIER> <COLON> type() ( <COMMA> <IDENTIFIER> <COLON> type() )*
+}
+
+void main ( ) : {}
+{
+    <MAIN> <LEFT_BRACE>
+    ( decl() )*
+    ( statement() )*
+    <RIGHT_BRACE>
+}
+
+
+void statement ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      <IDENTIFIER> <ASSIGNMENT> expression() <SEMICOLON> |
+      call_args() <SEMICOLON> |
+      <LEFT_BRACE> ( statement() )* <RIGHT_BRACE> |
+      <IF> condition()
+        statement()
+        <ELSE>
+        statement() |
+      <WHILE> condition()
+        <LEFT_BRACE> ( statement() )* <RIGHT_BRACE> |
+      <SKIP_W> <SEMICOLON> )
+}
+
+void call_args ( ) : {}
+{
+    <IDENTIFIER> <LEFT_BRACKET> ( arg() )* <RIGHT_BRACKET>
+}
+
+void expression ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      call_args() |
+      fragment() binary_arith_op() )
+}
+
+void binary_arith_op ( ) : {}
+{
+    ( <PLUS> expression() | 
+      <MINUS> expression() | 
+      {} )
+}
+
+void fragment ( ) : {}
+{
+    ( <IDENTIFIER> |
+      <NUMBER> |
+      <TRUE> |
+      <FALSE> |
+      <LEFT_BRACKET> expression() <RIGHT_BRACKET> |
+      {} )
+}
+
+void condition ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      <LEFT_BRACKET> condition() <RIGHT_BRACKET> comp_op() |
+      <NOT> condition() |
+      expression() comp_op() )
+}
+
+void comp_op ( ) : {}
+{
+    ( <EQUALS> condition() |
+      <NOT_EQUALS> condition() |
+      <LESS_THAN> condition() |
+      <LESS_THAN_OR_EQUAL_TO> condition() |
+      <GREATER_THAN> condition() |
+      <GREATER_THAN_OR_EQUAL_TO> condition() |
+      <OR> condition() |
+      <AND> condition() | 
+      {} )
+}
+
+void arg ( ) : {}
+{
+    <IDENTIFIER> ( <COMMA> <IDENTIFIER> )*
+}

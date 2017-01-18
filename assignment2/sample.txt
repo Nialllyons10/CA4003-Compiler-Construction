@@ -1,0 +1,251 @@
+------------------------------------------
+Program
+ DeclList
+ FunctionList
+  FunctionDecl
+   Type(integer)
+   ID(multiply)
+   ParameterList
+    Param
+     ID(x)
+     Type(integer)
+    Param
+     ID(y)
+     Type(integer)
+   FunctionBody
+    DeclList
+     Var
+      ID(result)
+      Type(integer)
+     Var
+      ID(minus_sign)
+      Type(boolean)
+    StatementList
+     If
+      Condition
+       LessThan
+        ID(x)
+        AND
+         Number(0)
+         GreaterThanOrEqualTo
+          ID(y)
+          Number(0)
+      StatementList
+       Assignment
+        ID(minus_sign)
+        Boolean(true)
+       Assignment
+        ID(x)
+        Negative
+         ID(x)
+      StatementList
+       If
+        Condition
+         LessThan
+          ID(y)
+          AND
+           Number(0)
+           GreaterThanOrEqualTo
+            ID(x)
+            Number(0)
+        StatementList
+         Assignment
+          ID(minus_sign)
+          Boolean(true)
+         Assignment
+          ID(y)
+          Negative
+           ID(y)
+        StatementList
+         If
+          Condition
+           AND
+            LessThan
+             ID(x)
+             Number(0)
+            LessThan
+             ID(y)
+             Number(0)
+          StatementList
+           Assignment
+            ID(minus_sign)
+            Boolean(false)
+           Assignment
+            ID(x)
+            Negative
+             ID(x)
+           Assignment
+            ID(y)
+            Negative
+             ID(y)
+          StatementList
+           Assignment
+            ID(minus_sign)
+            Boolean(false)
+     Assignment
+      ID(result)
+      Number(0)
+     While
+      Condition
+       GreaterThan
+        ID(y)
+        Number(0)
+      StatementList
+       Assignment
+        ID(a)
+        Add
+         ID(b)
+         ID(c)
+       Assignment
+        ID(y)
+        Subtract
+         ID(y)
+         Number(1)
+     If
+      Condition
+       Equals
+        ID(minus_sign)
+        Boolean(true)
+      StatementList
+       Assignment
+        ID(result)
+        Negative
+         ID(result)
+      StatementList
+       Skip
+    Return
+     ID(result)
+ Main
+  DeclList
+   Var
+    ID(arg1)
+    Type(integer)
+   Var
+    ID(arg2)
+    Type(integer)
+   Var
+    ID(result)
+    Type(integer)
+   Const
+    ID(five)
+    Type(integer)
+    Number(5)
+  StatementList
+   Assignment
+    ID(arg1)
+    Number(-6)
+   Assignment
+    ID(arg2)
+    ID(five)
+   Assignment
+    ID(result)
+    FunctionCall
+     ID(multiply)
+     ArgList
+      Arg
+       ID(arg1)
+      Arg
+       ID(arg2)
+------------------------------------------
+
+**** Abstract Syntax Tree ****
+Program
+ DeclList
+  Var
+   ID (i)
+   Type (integer)
+ FunctionList
+  FunctionDecl
+   Type (integer)
+   ID (test_fn)
+   ParameterList
+    Param
+     ID (x)
+     Type (integer)
+   FunctionBody
+    DeclList
+     Var
+      ID (i)
+      Type (integer)
+    StatementList
+     Assignment
+      ID (i)
+      Number (2)
+    Return
+     ID (x)
+ Main
+  DeclList
+   Var
+    ID (i)
+    Type (integer)
+  StatementList
+   Assignment
+    ID (i)
+    Number (1)
+   Assignment
+    ID (i)
+    FunctionCall
+     ID (test_fn)
+     ArgList
+      Arg
+       ID (i)
+******************************
+
+Variable "i" already declared in scope "Main"
+Error at line 13, column 9
+
+**** Symbol Table ****
+Scope: test_fn
+x
+ DataType: ParamVariable
+ Type: integer
+ Initial Value: {}
+ Is written to?: false
+ Is read from?: true
+i
+ DataType: Variable
+ Type: integer
+ Initial Value: {i=2}
+ Is written to?: true
+ Is read from?: false
+
+Scope: Program
+test_fn
+ DataType: Function
+ Type: integer
+ Parameters: {x=integer}
+ Is called?: true
+i
+ DataType: Variable
+ Type: integer
+ Initial Value: {}
+ Is written to?: false
+ Is read from?: false
+
+Scope: Main
+i
+ DataType: Variable
+ Type: integer
+ Initial Value: {i=1}
+ Is written to?: true
+ Is read from?: true
+
+**********************
+
+**** Symantic Analysis ****
+WARNING: 2 variables have not been initialised.
+WARNING: 2 variables have not been accessed.
+1 error(s).
+
+-------------------------------------------------
+
+**** IR using 3-address code ****
+L1
+ = i 2 
+ return   
+L2
+ = i 1 
+ funcCall test_fn i 
+ goto L1  
+ = i null 
+*********************************

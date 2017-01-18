@@ -1,0 +1,297 @@
+/*******************************
+***** SECTION 1 - OPTIONS *****
+*******************************/
+options {
+    IGNORE_CASE = true;
+    MULTI = true;
+    VISITOR = true;
+    NODE_DEFAULT_VOID = true;
+}
+
+/*********************************
+***** SECTION 2 - USER CODE *****
+*********************************/
+PARSER_BEGIN(Assignment2)
+import java.io.*;
+import java.util.*;
+
+public class Assignment2 {
+    public static Hashtable SymbolTable = new Hashtable();
+    
+    public static void main(String[] args) throws ParseException, FileNotFoundException {
+        Assignment2 parser;
+        if (args.length == 0) {
+            System.out.println("Please enter a file as a command line argument.");
+            return;
+        }
+        else if (args.length == 1) {
+            parser = new Assignment2(new FileInputStream(args[0]));
+            
+            SimpleNode root = parser.program();
+            System.out.println("**** Abstract Syntax Tree ****");
+            root.dump("");
+            System.out.println("******************************");
+            
+            System.out.println();
+
+            SemanticCheckVisitor scv = new SemanticCheckVisitor();
+            root.jjtAccept(scv, null);
+            
+        }
+    }
+}
+PARSER_END(Assignment2)
+
+/*****************************************
+***** SECTION 3 - TOKEN DEFINITIONS *****
+*****************************************/
+TOKEN_MGR_DECLS :
+{
+    static int commentNesting = 0;
+}
+
+/* Ignore any whitespace */
+SKIP : {
+    "\t"
+  | "\n"
+  | "\r"
+  | "\f"
+  | " "
+}
+
+/* Ingore comments */
+SKIP : {
+    < "//" ([" "-"~"])* ("\n" | "\r" | "\r\n") >
+  |   "/*" { commentNesting++; } : IN_COMMENT
+}
+
+<IN_COMMENT> SKIP : {
+    "/*" { commentNesting++; }
+  | "*/" { commentNesting--;
+          if (commentNesting == 0)
+              SwitchTo(DEFAULT);
+         }
+  /* Anything not recognised */
+  | <~[]>
+}
+    
+TOKEN : {
+/* Reserved Words */
+    < VAR: "var" >
+  | < CONST: "const" >
+  | < RETURN: "return" >
+  | < INTEGER: "integer" >
+  | < BOOLEAN: "boolean" >
+  | < VOID: "void" >
+  | < MAIN: "main" >
+  | < IF: "if" >
+  | < ELSE: "else" >
+  | < WHILE: "while" >
+  | < SKIP_W: "skip" >
+  | < TRUE: "true" >
+  | < FALSE: "false" >
+
+/* Symbols */
+  | < COMMA: ",">
+  | < SEMICOLON: ";" >
+  | < COLON: ":" >
+  | < LEFT_BRACE: "{" >
+  | < RIGHT_BRACE: "}" >
+  | < LEFT_BRACKET: "(" >
+  |	< RIGHT_BRACKET: ")" >  
+
+/* Operators */
+  | < ASSIGNMENT: "=" >
+  | < PLUS: "+" >
+  |	< MINUS: "-" >
+  |	< NOT: "~" >
+  |	< OR: "||" >
+  |	< AND: "&&" >
+  |	< EQUALS: "==" >
+  |	< NOT_EQUALS: "!=" >
+  |	< LESS_THAN: "<" >
+  |	< LESS_THAN_OR_EQUAL_TO: "<=" >
+  |	< GREATER_THAN: ">" >
+  |	< GREATER_THAN_OR_EQUAL_TO: ">=" >
+
+/* Integer */
+  | < #DIGIT: ["0"-"9"] >
+  | < NUMBER: ( "-" ["1"-"9"] (<DIGIT>)* ) |
+              ( ["1"-"9"] (<DIGIT>)* ) |
+              "0" >
+
+/* Identifier */
+  | < #CHAR: ["a"-"z"] >
+  | < IDENTIFIER: <CHAR> ( <CHAR> | <DIGIT> | "_" )* >
+}
+
+/*********************************************
+* SECTION 4 - THE GRAMMAR & PRODUCTION RULES *
+**********************************************/
+SimpleNode program ( ) #Program : {}
+{
+    declList() functionList() main() { return jjtThis; }
+}
+
+void functionList ( ) #FunctionList: {}
+{
+    ( function() )*
+}
+
+void decl ( ) : {}
+{
+    ( var_decl() | const_decl() ) <SEMICOLON>
+}
+
+void declList ( ) #DeclList: {}
+{
+    ( decl() )*
+}
+
+void var_decl ( ) #Var: {}
+{
+    <VAR> identifier() <COLON> type() 
+}
+
+void const_decl ( ) #Const: {}
+{
+    <CONST> identifier() <COLON> type() <ASSIGNMENT> expression()
+}
+
+void function ( ) #FunctionDecl: {}
+{
+    type() identifier() <LEFT_BRACKET> parameterList() <RIGHT_BRACKET>
+    functionBody()
+}
+
+void functionBody ( ) #FunctionBody(3): {}
+{
+    <LEFT_BRACE>
+    declList()
+    statementList()
+    returnStatement()
+    <RIGHT_BRACE>
+}
+
+void returnStatement ( ) #Return: {}
+{
+    <RETURN> expression() <SEMICOLON>
+}
+
+void type ( ) #Type: { Token t; }
+{
+    ( t = <INTEGER> { jjtThis.value = t; } |
+      t = <BOOLEAN> { jjtThis.value = t; } |
+      t = <VOID> { jjtThis.value = t; } )
+}
+
+void parameterList ( ) #ParameterList: {}
+{
+    ( identifier() <COLON> type() #Param(2) ( <COMMA> identifier() <COLON> type() #Param(2) )* | {} )
+}
+
+void main ( ) #Main: {}
+{
+    <MAIN> <LEFT_BRACE>
+    declList()
+    statementList()
+    <RIGHT_BRACE>
+}
+
+void statement ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      assignment() <SEMICOLON> |
+      call_args() <SEMICOLON> |
+      <LEFT_BRACE> statementList() <RIGHT_BRACE> |
+      <IF> condition() #Condition
+        statement()
+        <ELSE>
+        statement() #If(3)|
+      <WHILE> condition() #Condition
+        <LEFT_BRACE> statementList() <RIGHT_BRACE> #While(2) |
+      <SKIP_W> <SEMICOLON> #Skip)
+}
+
+
+void statementList ( ) #StatementList: {}
+{
+    ( statement() )*
+}
+
+void call_args ( ) #FunctionCall: {}
+{
+    identifier() <LEFT_BRACKET> ( arg() )* <RIGHT_BRACKET>
+}
+
+void expression ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      call_args() |
+      fragment() binary_arith_op() )
+}
+
+void binary_arith_op ( ) : {}
+{
+    ( <PLUS> expression() #Add(2) | 
+      <MINUS> expression() #Subtract(2) | 
+      {} )
+}
+
+void fragment ( ) : {}
+{
+    ( identifier() |
+      number() |
+      booleanValue() |
+      <PLUS> fragment() #Positive | 
+      <MINUS> fragment() #Negative |
+      <LEFT_BRACKET> expression() <RIGHT_BRACKET> |
+      {} )
+}
+
+void condition ( ) : {}
+{
+    ( LOOKAHEAD(2)
+      <LEFT_BRACKET> condition() <RIGHT_BRACKET> comp_op() |
+      <NOT> condition() #Not(1) |
+      expression() comp_op() )
+}
+
+void comp_op ( ) : {}
+{
+    ( <EQUALS> condition() #Equals(2) |
+      <NOT_EQUALS> condition() #NotEquals(2) |
+      <LESS_THAN> condition() #LessThan(2) |
+      <LESS_THAN_OR_EQUAL_TO> condition() #LessThanOrEqualTo(2) |
+      <GREATER_THAN> condition() #GreaterThan(2) |
+      <GREATER_THAN_OR_EQUAL_TO> condition() #GreaterThanOrEqualTo(2) |
+      <OR> condition() #OR(2) |
+      <AND> condition() #AND(2) | 
+      {} )
+}
+
+void arg ( ) #ArgList: {}
+{
+    identifier() #Arg(1) ( <COMMA> identifier() #Arg(1) )*
+}
+
+void identifier ( ) #ID: { Token t; }
+{
+    t = <IDENTIFIER> { jjtThis.value = t; }
+}
+
+void number ( ) #Number: { Token t; }
+{
+    t = <NUMBER> { jjtThis.value = t; }
+}
+
+void booleanValue ( ) #Boolean: { Token t; }
+{
+    t = <TRUE> { jjtThis.value = t; } |
+    t = <FALSE> { jjtThis.value = t; }
+}
+
+void assignment () #Assignment: {}
+{
+    identifier() <ASSIGNMENT> expression()
+}
